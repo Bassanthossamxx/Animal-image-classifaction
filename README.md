@@ -132,6 +132,23 @@ After training and evaluation, the project should produce:
 - `results/sample_predictions.png`
 - `results/classification_report.txt`
 
+## Results Summary
+
+The three notebooks were executed successfully and produced the full set of expected outputs.
+
+- Notebook 1 verified the extracted dataset structure, class folders, image counts, and saved dataset visuals.
+- Notebook 2 trained the ResNet18 transfer-learning model and saved the best checkpoint to `models/best_model.pth`.
+- Notebook 3 evaluated the saved model on the unseen test split and generated the final metrics and plots.
+
+Current evaluation highlights:
+
+- Test accuracy: `97.56%`
+- Macro precision: `0.9778`
+- Macro recall: `0.9765`
+- Macro F1-score: `0.9757`
+
+Detailed run notes are available in `results/run_summary.md`.
+
 ## University Requirements Mapping
 
 ### Training Phase
