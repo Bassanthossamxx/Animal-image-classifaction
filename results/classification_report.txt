@@ -1,0 +1,16 @@
+ANIMAL CLASSIFICATION - TEST SET RESULTS
+============================================================
+
+Overall Test Accuracy: 97.56%
+
+              precision    recall  f1-score   support
+
+         cat     1.0000    0.8824    0.9375        17
+         cow     1.0000    1.0000    1.0000        16
+        deer     0.8889    1.0000    0.9412        16
+         dog     1.0000    1.0000    1.0000        16
+        lion     1.0000    1.0000    1.0000        17
+
+    accuracy                         0.9756        82
+   macro avg     0.9778    0.9765    0.9757        82
+weighted avg     0.9783    0.9756    0.9756        82
