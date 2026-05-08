@@ -15,19 +15,13 @@ DEFAULT_CLASS_NAMES = ["cat", "cow", "deer", "dog", "lion"]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def build_model(num_classes: int) -> nn.Module:
-    model = models.resnet18(weights=None)
-    model.fc = nn.Linear(model.fc.in_features, num_classes)
-    return model
-
-
 def load_checkpoint():
     checkpoint = torch.load(MODEL_PATH, map_location=device)
     class_names = checkpoint.get("class_names", DEFAULT_CLASS_NAMES)
-    model = build_model(len(class_names))
+    model = models.resnet18(weights=None)
+    model.fc = nn.Linear(model.fc.in_features, len(class_names))
     model.load_state_dict(checkpoint["model_state_dict"])
-    model = model.to(device)
-    model.eval()
+    model.to(device).eval()
     return model, class_names
 
 

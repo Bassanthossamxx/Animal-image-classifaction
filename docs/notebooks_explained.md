@@ -64,7 +64,7 @@ from PIL import Image
 #### What each line does
 
 - `import os`
-  - Imports Python’s built-in operating system utilities.
+  - Imports Python's built-in operating system utilities.
   - In this notebook it is not heavily used, but it is common in dataset scripts.
 
 - `from collections import Counter`
@@ -106,7 +106,7 @@ IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
 
 - `DATA_DIR = Path('../data/animals_dataset')`
   - Defines the dataset root.
-  - `..` means “go one folder up” from `notebooks/` to the project root.
+  - `..` means "go one folder up" from `notebooks/` to the project root.
 
 - `TRAIN_DIR = DATA_DIR / 'train'`
   - Creates the path to the training folder.
@@ -175,11 +175,8 @@ If the class names are wrong at this stage, every later stage would use the wron
 ### Second Code Cell: Counting Images
 
 ```python
-def image_files(folder: Path):
-    return sorted([
-        path for path in folder.iterdir()
-        if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
-    ])
+def image_files(folder):
+    return sorted(f for f in folder.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS)
 ```
 
 #### What this function does
@@ -187,53 +184,45 @@ def image_files(folder: Path):
 This function collects valid image files from one folder.
 
 - `folder.iterdir()`
-  - Loops through everything inside the folder.
+  - Goes through every file and folder inside.
 
-- `path.is_file()`
-  - Keeps only files, not directories.
-
-- `path.suffix.lower() in IMAGE_EXTENSIONS`
-  - Keeps only image files with approved extensions.
+- `f.suffix.lower() in IMAGE_EXTENSIONS`
+  - Keeps only files whose extension is `.jpg`, `.jpeg`, or `.png`.
+  - `.lower()` handles cases like `.JPG` or `.PNG`.
 
 - `sorted(...)`
-  - Keeps the file list in a stable order.
+  - Returns the file list in alphabetical order, so results are consistent every run.
 
-This function is useful because many later steps need “all image files in a class folder.”
+This function is useful because many later steps need "all image files in a class folder."
 
 ---
 
 ```python
-def count_images(split_dir: Path):
-    counts = {}
-    for class_name in sorted([item.name for item in split_dir.iterdir() if item.is_dir()]):
-        counts[class_name] = len(image_files(split_dir / class_name))
-    return counts
+def count_images(split_dir):
+    return {d.name: len(image_files(d)) for d in sorted(split_dir.iterdir()) if d.is_dir()}
 ```
 
 #### What this function does
 
 It counts how many image files exist inside each class folder for one split.
 
-- `counts = {}`
-  - Creates an empty dictionary.
+This is written as a **dictionary comprehension**, which is a compact Python pattern for building a dictionary in one line.
 
-- The loop goes through each class directory in the split.
+Breaking it down:
 
-- `split_dir / class_name`
-  - Builds the folder path for that class.
+- `for d in sorted(split_dir.iterdir())`
+  - Loops through each item in the split folder in alphabetical order.
 
-- `image_files(...)`
-  - Gets the valid image files.
+- `if d.is_dir()`
+  - Keeps only folders (each folder is a class).
 
-- `len(...)`
-  - Counts them.
+- `d.name`
+  - Gets the class name, like `cat` or `dog`.
 
-- `counts[class_name] = ...`
-  - Stores the result, for example:
-    - `{'cat': 91, 'cow': 86, ...}`
+- `len(image_files(d))`
+  - Calls the function above to get all images in that class folder and counts them.
 
-- `return counts`
-  - Gives back the dictionary.
+- The result looks like: `{'cat': 91, 'cow': 86, 'deer': 87, 'dog': 111, 'lion': 89}`
 
 ---
 
@@ -241,8 +230,8 @@ Then the notebook applies the function:
 
 ```python
 train_counts = count_images(TRAIN_DIR)
-val_counts = count_images(VAL_DIR)
-test_counts = count_images(TEST_DIR)
+val_counts   = count_images(VAL_DIR)
+test_counts  = count_images(TEST_DIR)
 ```
 
 This creates one dictionary for each split.
@@ -254,8 +243,8 @@ Next:
 ```python
 summary_df = pd.DataFrame([
     {'split': 'train', **train_counts},
-    {'split': 'val', **val_counts},
-    {'split': 'test', **test_counts},
+    {'split': 'val',   **val_counts},
+    {'split': 'test',  **test_counts},
 ]).set_index('split')
 ```
 
@@ -267,10 +256,10 @@ summary_df = pd.DataFrame([
 - `{'split': 'train', **train_counts}`
   - Builds one row where:
     - `split` is `"train"`
-    - the remaining keys and values come from `train_counts`
+    - `**train_counts` unpacks the dictionary so each class becomes its own column.
 
 - `set_index('split')`
-  - Makes the `split` column the row label.
+  - Makes the `split` column the row label instead of a regular column.
 
 The final table is easier to read than raw dictionaries.
 
@@ -280,25 +269,21 @@ Then:
 
 ```python
 display(summary_df)
-print('\nDataset totals:')
-print(f"Train: {sum(train_counts.values())}")
-print(f"Val:   {sum(val_counts.values())}")
-print(f"Test:  {sum(test_counts.values())}")
+print(f"\nTrain: {sum(train_counts.values())}  Val: {sum(val_counts.values())}  Test: {sum(test_counts.values())}")
 ```
 
 #### What this does
 
 - `display(summary_df)`
-  - Shows the table nicely in Jupyter.
+  - Shows the table nicely in Jupyter with proper formatting.
 
-- `sum(train_counts.values())`
-  - Adds all class counts in the train split.
-
-- Similar logic is used for val and test.
+- The `print(...)` line
+  - Adds all class counts in each split to give the total image count per split.
+  - All three totals are printed on one line for brevity.
 
 #### Why this matters
 
-This gives both class-level and split-level understanding of the dataset.
+This gives both class-level and split-level understanding of the dataset at a glance.
 
 ---
 
@@ -311,7 +296,7 @@ fig, axes = plt.subplots(1, 3, figsize=(15, 4), sharey=True)
 ```
 
 - Creates one figure with three subplots in one row.
-- `sharey=True` means all three charts use the same y-axis scale.
+- `sharey=True` means all three charts use the same y-axis scale, so you can compare heights visually.
 
 ---
 
@@ -325,10 +310,10 @@ for idx, (split_name, counts) in enumerate([
 ]):
 ```
 
-- `enumerate(...)` gives an index and a value.
-- `idx` tells the notebook which subplot to use.
-- `split_name` is the chart title.
-- `counts` is the dictionary for that split.
+- `enumerate(...)` gives both an index number and a value at each step.
+- `idx` tells the notebook which subplot to draw into.
+- `split_name` is the chart title like `"Train"`.
+- `counts` is the dictionary of class counts for that split.
 
 ---
 
@@ -343,8 +328,9 @@ axes[idx].tick_params(axis='x', rotation=45)
 
 - `bar(...)`
   - Creates the bar chart.
-  - The x-axis is class names.
-  - The y-axis is image counts.
+  - `counts.keys()` gives the class names for the x-axis.
+  - `counts.values()` gives the image counts for bar heights.
+  - The color list assigns one color per class.
 
 - `set_title(...)`
   - Adds the subplot title.
@@ -353,7 +339,7 @@ axes[idx].tick_params(axis='x', rotation=45)
   - Labels the x-axis.
 
 - `tick_params(... rotation=45)`
-  - Rotates class names so they are easier to read.
+  - Rotates class names by 45 degrees so they do not overlap.
 
 Then:
 
@@ -365,13 +351,13 @@ plt.show()
 ```
 
 - `axes[0].set_ylabel(...)`
-  - Adds a y-axis label to the first subplot.
+  - Adds a y-axis label to the first subplot only (since all share the same scale).
 
 - `plt.tight_layout()`
-  - Reduces overlap between plot elements.
+  - Reduces overlap between plot elements automatically.
 
 - `plt.savefig(...)`
-  - Saves the figure to the `results/` folder.
+  - Saves the figure to the `results/` folder as a high-quality PNG.
 
 - `plt.show()`
   - Displays it inside the notebook.
@@ -393,10 +379,10 @@ fig.suptitle('Sample Images from Training Set', fontsize=16)
 
 - Creates a grid with:
   - one row per class
-  - five columns for five images
+  - five columns for five images per class
 
 - `suptitle(...)`
-  - Adds one overall title above the figure.
+  - Adds one overall title above the entire figure.
 
 ---
 
@@ -407,7 +393,7 @@ if len(classes) == 1:
 
 This is a safety check.
 
-If there were only one class, matplotlib would return the axes in a different shape, so this line keeps later code consistent.
+If there were only one class, matplotlib would return the axes in a different shape, so this line keeps later code consistent regardless.
 
 ---
 
@@ -419,7 +405,8 @@ for i, class_name in enumerate(classes):
 ```
 
 - Loops through each class.
-- Takes the first five images from that class.
+- Calls `image_files()` to get all images in that class folder.
+- `[:5]` takes only the first five.
 
 ---
 
@@ -438,24 +425,26 @@ for j in range(5):
 
 #### What this does
 
-- Chooses the correct subplot cell.
+- `axes[i][j]`
+  - Selects the subplot at row `i`, column `j`.
+
 - `ax.axis('off')`
-  - Hides axes lines and tick marks.
+  - Hides the axis lines and tick marks so only the image is visible.
 
 - `if j < len(samples)`
-  - Avoids indexing past the available images.
+  - Avoids indexing past the end if a class has fewer than 5 images.
 
 - `Image.open(samples[j])`
-  - Opens the image.
+  - Opens the image file from disk.
 
 - `img.convert('RGB')`
-  - Ensures a standard color format.
+  - Forces a standard 3-channel color format so matplotlib can display it correctly.
 
 - `ax.imshow(...)`
-  - Draws the image in the subplot.
+  - Draws the image into the subplot.
 
 - `if j == 0`
-  - Only the first image in each row gets a class title.
+  - Only the first image in each row gets a class name label.
 
 Then it saves the figure:
 
@@ -467,7 +456,7 @@ plt.show()
 
 #### Output meaning
 
-This lets you visually inspect whether the folders actually contain the correct animals and whether the dataset looks reasonable.
+This lets you visually inspect whether the folders actually contain the correct animals and whether the dataset looks reasonable before training.
 
 ---
 
@@ -479,8 +468,8 @@ format_counter = Counter()
 ```
 
 - Creates two counters:
-  - one for image sizes
-  - one for file formats
+  - one for image sizes like `(275, 183)`
+  - one for file formats like `JPEG`
 
 ---
 
@@ -495,17 +484,15 @@ for class_name in classes:
 #### What this does
 
 - Goes through each class.
-- Takes up to 15 images per class.
+- Takes up to 15 images per class as a sample.
 - Opens each image.
-- Records:
-  - `img.size`, such as `(275, 183)`
-  - `img.format`, such as `JPEG`
+- Records `img.size` (width, height) and `img.format` (JPEG, PNG, etc.).
 
 #### Why only 15 per class
 
-This is a sample-based inspection, not a full dataset-wide expensive scan.
+This is a sample-based inspection, not a full dataset-wide scan.
 
-It is enough to understand the data without slowing the notebook too much.
+It is enough to understand the data without slowing the notebook.
 
 ---
 
@@ -525,7 +512,7 @@ print('\nData exploration complete.')
 
 #### What this does
 
-- Prints the most common image sizes.
+- Prints the most common image dimensions.
 - Prints the observed file formats.
 - Prints a completion message.
 
@@ -582,7 +569,7 @@ from torchvision import datasets, models, transforms
 #### What each import does
 
 - `time`
-  - Used to measure training duration.
+  - Used to measure how long training takes.
 
 - `Path`
   - Used for file paths.
@@ -603,7 +590,7 @@ from torchvision import datasets, models, transforms
   - Loads data in batches during training.
 
 - `datasets, models, transforms`
-  - `datasets.ImageFolder` loads folder-structured image datasets.
+  - `datasets.ImageFolder` loads folder-structured image datasets automatically.
   - `models` provides pretrained architectures like ResNet18.
   - `transforms` handles image preprocessing and augmentation.
 
@@ -628,7 +615,7 @@ MODELS_DIR.mkdir(exist_ok=True)
 RESULTS_DIR.mkdir(exist_ok=True)
 ```
 
-- Ensures the output folders exist.
+- Ensures the output folders exist before trying to save anything.
 
 ---
 
@@ -640,10 +627,10 @@ print(f'Using device: {device}')
 #### What this does
 
 - Checks if a GPU is available through CUDA.
-- If yes, training uses the GPU.
+- If yes, training uses the GPU which is much faster.
 - Otherwise, it falls back to CPU.
 
-This makes the notebook portable across machines.
+This makes the notebook portable across machines with and without a GPU.
 
 ---
 
@@ -658,20 +645,21 @@ NUM_WORKERS = 0
 #### Meaning of each hyperparameter
 
 - `BATCH_SIZE = 16`
-  - Number of images processed before each optimization step.
+  - Number of images processed before each weight update.
+  - Smaller batches use less memory but train slightly slower.
 
 - `LEARNING_RATE = 1e-3`
-  - Step size used by the optimizer.
+  - This is `0.001`. It controls how big each update step is.
 
 - `NUM_EPOCHS = 20`
-  - Maximum training passes over the full training set.
+  - Maximum number of passes over the full training set.
 
 - `PATIENCE = 5`
-  - Number of non-improving validation epochs allowed before early stopping.
+  - If validation loss does not improve for 5 consecutive epochs, training stops early.
 
 - `NUM_WORKERS = 0`
-  - Number of subprocesses used by `DataLoader`.
-  - `0` is safer across Windows/Jupyter environments.
+  - Number of background processes used by `DataLoader` to load images.
+  - `0` means loading happens in the main process, which is safer on Windows and in Jupyter.
 
 ---
 
@@ -690,26 +678,30 @@ train_transform = transforms.Compose([
 
 #### What this training transform does
 
+`transforms.Compose` chains multiple steps together. Each image passes through them in order.
+
 - `Resize((224, 224))`
-  - Resizes every image to the input size expected by ResNet18.
+  - Resizes every image to 224×224 pixels, which is the input size ResNet18 expects.
 
 - `RandomHorizontalFlip(p=0.5)`
-  - Randomly flips some images horizontally.
-  - This helps the model generalize.
+  - Randomly flips some images left-to-right.
+  - This teaches the model that the same animal flipped is still the same animal.
 
 - `RandomRotation(15)`
-  - Rotates images up to 15 degrees.
+  - Randomly rotates images up to 15 degrees.
+  - This makes the model more robust to animals not perfectly centered.
 
 - `ColorJitter(...)`
-  - Slightly changes brightness, contrast, and saturation.
-  - This teaches the model to be robust to lighting variation.
+  - Slightly changes brightness, contrast, and saturation randomly.
+  - This teaches the model to handle different lighting conditions.
 
 - `ToTensor()`
-  - Converts the image to a PyTorch tensor.
+  - Converts the image from a PIL Image into a PyTorch tensor.
+  - Pixel values go from 0–255 to 0.0–1.0.
 
 - `Normalize(...)`
-  - Standardizes pixel values using ImageNet statistics.
-  - This is important because the pretrained ResNet18 expects similarly normalized inputs.
+  - Shifts pixel values to match ImageNet statistics (mean and standard deviation).
+  - This is required because ResNet18 was pretrained on ImageNet with these exact values.
 
 ---
 
@@ -723,9 +715,11 @@ val_transform = transforms.Compose([
 
 #### Why validation transform is simpler
 
-Validation data should not be augmented.
+Validation data should never be randomly augmented.
 
-We want validation to reflect real model performance, not random transformed versions.
+We want validation to reflect real model performance, not performance on randomly altered images.
+
+So we only resize, convert, and normalize — no random flipping or color changes.
 
 ---
 
@@ -749,8 +743,8 @@ train/
 
 It automatically:
 
-- reads images
-- assigns numeric labels based on folder names
+- reads images from each class folder
+- assigns a numeric label based on alphabetical folder order (cat=0, cow=1, deer=2, dog=3, lion=4)
 - stores class names in `dataset.classes`
 
 ---
@@ -763,10 +757,10 @@ val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_w
 #### Why two loaders
 
 - `train_loader`
-  - Uses `shuffle=True` so training order changes each epoch.
+  - `shuffle=True` randomizes the order of images each epoch so the model does not memorize order.
 
 - `val_loader`
-  - Uses `shuffle=False` because validation does not need randomness.
+  - `shuffle=False` keeps validation order consistent so results are reproducible.
 
 ---
 
@@ -781,11 +775,11 @@ print(f'Val samples: {len(val_dataset)}')
 
 This shows:
 
-- the class order
-- the number of output classes
-- the number of training and validation images
+- the class order (which defines the label mapping)
+- the number of output classes needed in the model
+- how many images are in each split
 
-The class order is especially important because it defines the label mapping used later by the model and app.
+The class order is especially important because every later step — evaluation, app — must use the same order.
 
 ---
 
@@ -799,11 +793,9 @@ model = models.resnet18(weights=weights)
 #### What this means
 
 - Loads a pretrained ResNet18 model.
-- The weights come from ImageNet pretraining.
+- `DEFAULT` means use the best available pretrained weights, which come from ImageNet.
 
-This is called transfer learning.
-
-Instead of training from scratch, the model starts with useful visual features already learned from a huge dataset.
+This is called **transfer learning**: instead of training from scratch, the model starts with useful visual features already learned from millions of images.
 
 ---
 
@@ -814,18 +806,18 @@ for param in model.parameters():
 
 #### What this does
 
-It freezes all pretrained layers.
+It **freezes** all pretrained layers.
 
 That means:
 
-- the convolutional backbone will not update during training
-- only the final classification layer will be trained
+- the convolutional backbone will not change during our training
+- only the final classification layer will learn
 
-This is useful when:
+This is the right choice when:
 
-- the dataset is small
-- you want faster training
-- you want to reduce overfitting risk
+- the dataset is small (we have ~464 training images)
+- we want faster training
+- we want to reduce the risk of overfitting
 
 ---
 
@@ -837,10 +829,10 @@ model = model.to(device)
 #### What this does
 
 - Replaces the final fully connected layer.
-- The old layer was built for ImageNet’s original classes.
-- The new layer outputs exactly `num_classes`, which is 5 here.
+- The original layer was built for ImageNet's 1000 classes.
+- The new layer outputs exactly `num_classes` values, which is 5 here.
 
-`model.to(device)` moves the model to GPU or CPU.
+`model.to(device)` moves the entire model to the selected device (GPU or CPU).
 
 ---
 
@@ -853,30 +845,36 @@ scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0
 #### What each item means
 
 - `criterion = nn.CrossEntropyLoss()`
-  - Standard classification loss for multi-class problems.
+  - The loss function for multi-class classification.
+  - It measures how wrong the model's predictions are.
 
 - `optimizer = optim.Adam(model.fc.parameters(), lr=LEARNING_RATE)`
-  - Uses Adam to update only the final layer parameters.
+  - Adam optimizer will update only the final layer's parameters.
+  - `model.fc.parameters()` means "only touch the new classification layer."
 
 - `ReduceLROnPlateau(...)`
-  - Reduces the learning rate when validation loss stops improving.
-  - `mode='min'` means lower validation loss is better.
-  - `factor=0.5` halves the learning rate when triggered.
-  - `patience=2` waits for two bad epochs first.
+  - Reduces the learning rate automatically when validation loss stops improving.
+  - `mode='min'`: lower is better for loss.
+  - `factor=0.5`: halves the learning rate when triggered.
+  - `patience=2`: waits for 2 non-improving epochs before reducing.
 
 ---
 
 ### Fourth Code Cell: `run_epoch` Function
 
-This is the core training/validation function.
+This is the most important function in the training notebook. It handles one full pass through the data, for either training or validation.
 
 ```python
 def run_epoch(model, loader, criterion, device, optimizer=None):
 ```
 
-If `optimizer` is provided, the function behaves as training.
+- `model`: the neural network.
+- `loader`: either `train_loader` or `val_loader`.
+- `criterion`: the loss function.
+- `device`: CPU or GPU.
+- `optimizer`: if provided, this is a training epoch. If `None`, this is a validation epoch.
 
-If `optimizer` is `None`, it behaves as evaluation.
+The trick of using `optimizer=None` to signal "validation mode" keeps the code clean: one function handles both cases.
 
 ---
 
@@ -885,36 +883,46 @@ is_training = optimizer is not None
 model.train() if is_training else model.eval()
 ```
 
-- Detects whether the current epoch is training or validation.
-- `model.train()`
-  - Enables training behavior.
-- `model.eval()`
-  - Switches the model into evaluation mode.
+- `is_training` becomes `True` for training, `False` for validation.
+- `model.train()` enables training behavior (e.g., dropout is active).
+- `model.eval()` switches to evaluation behavior (e.g., dropout is disabled, batch norm uses running stats).
 
-This matters especially for layers like dropout or batch normalization.
+This distinction matters because some layers behave differently during training versus inference.
 
 ---
 
 ```python
-running_loss = 0.0
-correct = 0
-total = 0
+running_loss, correct, total = 0.0, 0, 0
 ```
 
-These variables accumulate statistics across all batches.
+Three counters on one line:
+
+- `running_loss`: accumulates the total loss across all batches.
+- `correct`: accumulates the number of correct predictions.
+- `total`: accumulates the total number of images seen.
 
 ---
 
 ```python
+with torch.set_grad_enabled(is_training):
+```
+
+#### What this does
+
+`torch.set_grad_enabled(is_training)` is a **context manager** that controls whether PyTorch tracks gradients.
+
+- When `is_training=True`, gradients are tracked. This is required for backpropagation.
+- When `is_training=False`, gradients are not tracked. This saves memory and makes validation faster.
+
+This is simpler and more readable than writing:
+
+```python
+# old way — harder to read
 context = torch.enable_grad() if is_training else torch.no_grad()
 with context:
 ```
 
-#### Why this is smart
-
-- During training, gradients must be tracked.
-- During validation, gradients are unnecessary.
-- `torch.no_grad()` saves memory and speeds up validation.
+`torch.set_grad_enabled()` does exactly the same thing in one clean line.
 
 ---
 
@@ -926,7 +934,7 @@ for images, labels in loader:
 ```
 
 - Gets one batch of images and labels.
-- Moves both to the same device as the model.
+- Moves both to the same device as the model (GPU or CPU).
 
 ---
 
@@ -935,9 +943,8 @@ if is_training:
     optimizer.zero_grad()
 ```
 
-- Clears old gradients before the new backward pass.
-
-Without this, gradients would accumulate incorrectly.
+- Clears old gradients before computing new ones.
+- Without this, gradients would accumulate from previous batches and corrupt the update.
 
 ---
 
@@ -946,8 +953,8 @@ outputs = model(images)
 loss = criterion(outputs, labels)
 ```
 
-- `model(images)` performs the forward pass.
-- `loss = criterion(...)` computes classification loss.
+- `model(images)`: forward pass — produces one score per class for each image.
+- `criterion(outputs, labels)`: computes how wrong those scores are compared to the true labels.
 
 ---
 
@@ -957,47 +964,44 @@ if is_training:
     optimizer.step()
 ```
 
-#### What this means
+- `loss.backward()`: computes gradients (how to adjust each weight to reduce the loss).
+- `optimizer.step()`: applies those adjustments to the model weights.
 
-- `loss.backward()`
-  - Computes gradients.
-
-- `optimizer.step()`
-  - Updates the trainable weights.
-
-These happen only during training, not validation.
+These two lines only happen during training. Validation skips them because we are only measuring performance, not updating anything.
 
 ---
 
 ```python
 running_loss += loss.item()
-predictions = outputs.argmax(dim=1)
+correct += (outputs.argmax(dim=1) == labels).sum().item()
 total += labels.size(0)
-correct += (predictions == labels).sum().item()
 ```
 
 #### What this does
 
-- Adds the batch loss to the total.
-- Gets the predicted class index for each image.
-- Adds batch size to total sample count.
-- Adds number of correct predictions.
+- `loss.item()`: converts the loss tensor to a plain Python number and adds it to the total.
+
+- `outputs.argmax(dim=1)`: finds the class with the highest score for each image in the batch.
+  - `dim=1` means "take the max along the class dimension."
+
+- `== labels`: compares predicted class indices to true labels element-by-element.
+
+- `.sum().item()`: counts how many predictions were correct in this batch.
+
+- `labels.size(0)`: the number of images in this batch (batch size).
 
 ---
 
-After the loop:
+After all batches:
 
 ```python
-epoch_loss = running_loss / max(len(loader), 1)
-epoch_acc = 100.0 * correct / max(total, 1)
-return epoch_loss, epoch_acc
+return running_loss / len(loader), 100.0 * correct / total
 ```
 
-- Computes average loss per batch.
-- Computes accuracy percentage.
-- Returns both values.
+- `running_loss / len(loader)`: average loss per batch across the epoch.
+- `100.0 * correct / total`: accuracy as a percentage.
 
-`max(..., 1)` avoids division by zero if something unexpected happens.
+Both are returned together so the training loop can log and compare them.
 
 ---
 
@@ -1011,14 +1015,9 @@ patience_counter = 0
 
 #### What these variables do
 
-- `history`
-  - Stores values for later plotting.
-
-- `best_val_loss`
-  - Tracks the best validation loss seen so far.
-
-- `patience_counter`
-  - Counts how many epochs in a row failed to improve validation loss.
+- `history`: stores metrics after each epoch for later plotting.
+- `best_val_loss`: initialized to infinity. Any real loss will be smaller, so the first epoch always saves a checkpoint.
+- `patience_counter`: counts how many epochs in a row had no improvement.
 
 ---
 
@@ -1026,7 +1025,7 @@ patience_counter = 0
 start_time = time.time()
 ```
 
-- Records training start time.
+- Records the current time so we can measure total training duration.
 
 ---
 
@@ -1036,7 +1035,7 @@ Then the epoch loop:
 for epoch in range(NUM_EPOCHS):
 ```
 
-This repeats up to 20 epochs unless early stopping stops training sooner.
+This repeats up to 20 epochs unless early stopping ends training sooner.
 
 ---
 
@@ -1045,10 +1044,8 @@ train_loss, train_acc = run_epoch(model, train_loader, criterion, device, optimi
 val_loss, val_acc = run_epoch(model, val_loader, criterion, device)
 ```
 
-- First line runs one training epoch.
-- Second line runs one validation epoch.
-
-Notice validation does not pass an optimizer.
+- First line runs one full training epoch (optimizer is passed in, so weights are updated).
+- Second line runs one full validation epoch (no optimizer, so weights are not changed).
 
 ---
 
@@ -1059,7 +1056,7 @@ history['val_loss'].append(val_loss)
 history['val_acc'].append(val_acc)
 ```
 
-This stores the metrics after each epoch.
+Stores the four metrics after each epoch so we can plot them later.
 
 ---
 
@@ -1067,7 +1064,7 @@ This stores the metrics after each epoch.
 scheduler.step(val_loss)
 ```
 
-This allows the scheduler to watch validation loss and reduce learning rate if improvement stalls.
+Gives the current validation loss to the scheduler. If it has not improved for 2 epochs, the scheduler halves the learning rate.
 
 ---
 
@@ -1079,7 +1076,9 @@ print(
 )
 ```
 
-This prints clean progress after each epoch.
+- `{epoch + 1:02d}` formats the epoch number with a leading zero if needed, like `01`, `02`.
+- `:.4f` means four decimal places for loss values.
+- `:.2f` means two decimal places for accuracy percentages.
 
 ---
 
@@ -1101,20 +1100,13 @@ if val_loss < best_val_loss:
 
 #### What this does
 
-If current validation loss is the best so far:
+If the current validation loss is the best seen so far:
 
-- update `best_val_loss`
-- reset early stopping counter
-- save the current model checkpoint
+- update `best_val_loss` to the new value
+- reset `patience_counter` to zero (we have improvement, so start counting again)
+- save a checkpoint with model weights, class names, best loss, and training history
 
-The checkpoint includes:
-
-- model weights
-- class names
-- best validation loss
-- training history
-
-Saving `class_names` is very useful because the app and evaluation notebook need the same label order.
+Saving `class_names` inside the checkpoint is very important. It means the evaluation notebook and the app can always use the exact same label order as training — no risk of mismatch.
 
 ---
 
@@ -1124,10 +1116,10 @@ else:
     print(f'  No improvement ({patience_counter}/{PATIENCE})')
 ```
 
-If validation loss does not improve:
+If validation loss did not improve:
 
-- increase the counter
-- print a warning message
+- increment the counter
+- print a message showing how close we are to early stopping
 
 ---
 
@@ -1137,9 +1129,9 @@ if patience_counter >= PATIENCE:
     break
 ```
 
-This is early stopping.
+This is **early stopping**.
 
-If the model stops improving for several epochs, training ends early instead of wasting time and risking overfitting.
+If the model stops improving for 5 epochs in a row, training ends. This prevents wasting time and reduces overfitting risk.
 
 ---
 
@@ -1151,19 +1143,19 @@ print(f'Training completed in {training_minutes:.2f} minutes')
 print(f'Best validation loss: {best_val_loss:.4f}')
 ```
 
-This reports total runtime and the best validation loss achieved.
+Reports total runtime and the best validation loss achieved.
 
 ---
 
 ### Sixth Code Cell: Training Curves
 
-This cell visualizes training history.
+This cell visualizes the training history.
 
 ```python
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 ```
 
-- Creates two plots side by side.
+- Creates two plots side by side: one for loss, one for accuracy.
 
 ---
 
@@ -1181,9 +1173,9 @@ axes[0].legend()
 
 This shows whether:
 
-- loss is decreasing
-- validation tracks training reasonably well
-- overfitting may be happening
+- loss is decreasing over epochs (good)
+- validation loss tracks training loss (good, means no overfitting)
+- validation loss starts rising while training loss falls (bad, means overfitting)
 
 ---
 
@@ -1213,7 +1205,7 @@ plt.show()
 print(f'Best model saved to {MODEL_SAVE_PATH}')
 ```
 
-This stores the plot in `results/` and confirms the checkpoint path.
+Stores the plot in `results/` and confirms the checkpoint path.
 
 ---
 
@@ -1226,11 +1218,9 @@ This notebook is the final benchmarking stage.
 It evaluates the saved model using the unseen test split and produces:
 
 - overall accuracy
-- per-class precision
-- per-class recall
-- per-class F1-score
+- per-class precision, recall, and F1-score
 - confusion matrix
-- sample predictions
+- sample predictions with images
 
 This is the notebook that produces the final performance report required academically.
 
@@ -1244,16 +1234,29 @@ This cell documents that the notebook loads the saved model and evaluates it on 
 
 ### First Code Cell: Imports and Setup
 
-The imports are similar to training, but now there are extra metric libraries:
+```python
+from pathlib import Path
 
-- `numpy`
-  - For numerical arrays and random sample selection.
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+import torch
+import torch.nn as nn
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from torch.utils.data import DataLoader
+from torchvision import datasets, models, transforms
+```
 
-- `seaborn`
-  - For nicer confusion matrix visualization.
+#### What each import does
 
-- `sklearn.metrics`
-  - For standard evaluation metrics.
+- `numpy` — for numerical arrays and random sample selection.
+- `seaborn` — for nicer confusion matrix visualization (the `heatmap` function).
+- `sklearn.metrics` — provides three functions:
+  - `accuracy_score`: overall accuracy.
+  - `classification_report`: precision, recall, F1-score for each class, plus averages. Can return a formatted string or a dictionary.
+  - `confusion_matrix`: the count matrix of true vs predicted labels.
+
+Notice that `precision_recall_fscore_support` is **not** imported here. In this version, `classification_report` handles everything — it returns all the same numbers without needing a separate import.
 
 ---
 
@@ -1279,7 +1282,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
 ```
 
-Same idea as training: use GPU if possible, CPU otherwise.
+Same idea as training: use GPU if available, CPU otherwise.
 
 ---
 
@@ -1293,9 +1296,9 @@ test_transform = transforms.Compose([
 ])
 ```
 
-This is the same preprocessing logic used for validation.
+This is the same preprocessing used for validation.
 
-No random augmentation is used, because test evaluation should be stable and unbiased.
+No random augmentation — test evaluation must be stable and unbiased.
 
 ---
 
@@ -1305,8 +1308,8 @@ test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers
 ```
 
 - Loads the test dataset.
-- Creates batches.
-- Keeps order fixed by using `shuffle=False`.
+- Creates batches of 16 images.
+- `shuffle=False` keeps the order fixed so results are reproducible.
 
 ---
 
@@ -1319,11 +1322,7 @@ class_names = checkpoint['class_names']
 
 Instead of hardcoding class names again, the notebook reads them from the saved checkpoint.
 
-This prevents label mismatch between:
-
-- training
-- evaluation
-- app
+This guarantees the label mapping matches exactly what was used during training. If we hardcoded them separately, a typo or different order would cause wrong predictions silently.
 
 ---
 
@@ -1337,147 +1336,125 @@ model.eval()
 
 #### What this does
 
-- Builds the same architecture shape used during training.
-- Sets the last layer to the correct number of classes.
-- Loads trained weights from the checkpoint.
-- Moves the model to the correct device.
-- Switches the model to evaluation mode.
+- `weights=None`: do not download pretrained weights — we are about to load our own trained weights.
+- `model.fc = nn.Linear(...)`: rebuilds the same final layer shape used during training.
+- `model.load_state_dict(...)`: loads the trained weights from the checkpoint.
+- `model.to(device)`: moves the model to the correct device.
+- `model.eval()`: switches to evaluation mode (disables dropout, etc.).
 
 ---
 
-### Third Code Cell: Prediction Loop
+### Third Code Cell: Prediction Loop and Metrics
 
 ```python
 all_predictions = []
 all_labels = []
 ```
 
-These lists will store all predicted and true labels for the entire test set.
+Two empty lists that will store all predicted and true labels for the entire test set.
 
 ---
 
 ```python
 with torch.no_grad():
     for images, labels in test_loader:
-        images = images.to(device)
-        outputs = model(images)
-        predictions = outputs.argmax(dim=1)
-
-        all_predictions.extend(predictions.cpu().numpy())
+        outputs = model(images.to(device))
+        all_predictions.extend(outputs.argmax(dim=1).cpu().numpy())
         all_labels.extend(labels.numpy())
 ```
 
 #### Step-by-step meaning
 
-- `torch.no_grad()`
-  - No gradients are needed during testing.
+- `torch.no_grad()`: disables gradient tracking. We do not need gradients for evaluation.
 
-- Loop over batches from the test loader.
+- `images.to(device)`: moves the batch to the correct device.
 
-- `images = images.to(device)`
-  - Moves the input batch to the device.
+- `model(images.to(device))`: forward pass — produces class scores for each image.
 
-- `outputs = model(images)`
-  - Runs the forward pass.
+- `outputs.argmax(dim=1)`: picks the class with the highest score for each image.
 
-- `argmax(dim=1)`
-  - Takes the class with highest score for each image.
+- `.cpu().numpy()`: moves the predictions from the device back to CPU and converts to NumPy.
 
-- `predictions.cpu().numpy()`
-  - Moves predictions back to CPU and converts to NumPy.
+- `extend(...)`: adds each batch's results to the full list.
 
-- `extend(...)`
-  - Adds the batch results to the overall list.
-
-At the end, you have predictions for the whole test set.
+After the loop, `all_predictions` contains one predicted class index per test image, and `all_labels` contains the true class indices.
 
 ---
-
-Then:
 
 ```python
 all_predictions = np.array(all_predictions)
 all_labels = np.array(all_labels)
 ```
 
-This converts lists to NumPy arrays for metric functions.
+Converts both lists to NumPy arrays, which is what the sklearn metric functions expect.
 
 ---
-
-### Fourth Code Cell: Metric Calculation
 
 ```python
 test_accuracy = accuracy_score(all_labels, all_predictions)
 ```
 
-- Computes overall accuracy.
-- Accuracy is:
-  - correct predictions / total predictions
+Computes overall accuracy:
+
+- correct predictions ÷ total predictions
 
 ---
 
 ```python
-precision, recall, f1, support = precision_recall_fscore_support(
-    all_labels,
-    all_predictions,
-    labels=range(len(class_names)),
-    average=None,
-)
+report_dict = classification_report(all_labels, all_predictions, target_names=class_names, output_dict=True)
 ```
 
-#### Meaning
+#### What this does
 
-This calculates class-by-class metrics.
+`classification_report` normally produces a nicely formatted text block. With `output_dict=True`, it returns a **dictionary** instead.
 
-- `precision`
-  - Of all items predicted as a class, how many were correct?
+The dictionary looks like this (simplified):
 
-- `recall`
-  - Of all true items in a class, how many were found?
+```python
+{
+    'cat':       {'precision': 1.0, 'recall': 0.88, 'f1-score': 0.94, 'support': 17},
+    'cow':       {'precision': 1.0, 'recall': 1.0,  'f1-score': 1.0,  'support': 16},
+    ...
+    'macro avg': {'precision': 0.98, 'recall': 0.98, 'f1-score': 0.98, 'support': 82},
+}
+```
 
-- `f1`
-  - Harmonic mean of precision and recall.
-
-- `support`
-  - Number of true examples in that class.
-
-- `average=None`
-  - Means “return values for each class separately.”
+This is cleaner than calling `precision_recall_fscore_support` twice (once for per-class, once for macro averages). One call gives everything.
 
 ---
 
 ```python
-precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(
-    all_labels,
-    all_predictions,
-    average='macro',
-)
+print(f'Overall test accuracy: {test_accuracy * 100:.2f}%')
+for class_name in class_names:
+    m = report_dict[class_name]
+    print(f"{class_name:<5} | Precision: {m['precision']:.4f} | Recall: {m['recall']:.4f} | F1: {m['f1-score']:.4f} | Support: {int(m['support'])}")
+macro = report_dict['macro avg']
+print(f"Macro averages | Precision: {macro['precision']:.4f} | Recall: {macro['recall']:.4f} | F1: {macro['f1-score']:.4f}")
 ```
 
-#### Meaning
+#### Breaking this down
 
-This calculates macro averages:
+- `test_accuracy * 100` converts the 0–1 accuracy to a percentage.
+- `for class_name in class_names` loops through each of the 5 classes.
+- `report_dict[class_name]` fetches the metrics dictionary for that class.
+- `m['precision']`, `m['recall']`, `m['f1-score']`, `m['support']` extract each metric value.
+- `{class_name:<5}` left-aligns the class name in a 5-character wide field so all rows line up.
+- `report_dict['macro avg']` fetches the macro averages row.
 
-- each class contributes equally
-- useful when classes are not perfectly balanced
-
----
-
-Then the notebook prints metrics clearly so you can read them in the notebook output.
-
-This printed block is often useful during debugging and for report writing.
+**Macro average** means: compute each metric per class, then take the simple average across classes. Each class contributes equally regardless of size.
 
 ---
 
-### Fifth Code Cell: Classification Report File
+### Fourth Code Cell: Classification Report File
 
 ```python
 report = classification_report(all_labels, all_predictions, target_names=class_names, digits=4)
 report_path = RESULTS_DIR / 'classification_report.txt'
 ```
 
-- Creates a formatted multi-line report string.
-- Sets the output file path.
+- This time `classification_report` is called **without** `output_dict=True`.
+- It returns a formatted text string suitable for saving to a file.
+- `digits=4` means four decimal places.
 
 ---
 
@@ -1492,30 +1469,31 @@ with report_path.open('w', encoding='utf-8') as file:
 #### What this does
 
 - Opens the output file in write mode.
-- Writes a custom header.
-- Writes overall accuracy.
-- Writes the full classification report.
+- Writes a custom header line.
+- Writes the overall accuracy.
+- Writes the full classification report text.
 
-This file becomes a permanent text summary of performance.
+This file becomes a permanent text record of performance you can include in your report.
 
 ---
 
-### Sixth Code Cell: Confusion Matrix
+### Fifth Code Cell: Confusion Matrix
 
 ```python
 cm = confusion_matrix(all_labels, all_predictions)
 ```
 
-#### What this means
+#### What a confusion matrix is
 
-A confusion matrix shows:
+A confusion matrix is a table where:
 
 - rows = true class
 - columns = predicted class
 
-Correct predictions are usually on the diagonal.
-
+Correct predictions appear on the diagonal.
 Wrong predictions appear off the diagonal.
+
+For example, if the model predicted "deer" for 2 images that were actually "cat", those 2 would appear in the cat row, deer column.
 
 ---
 
@@ -1541,23 +1519,16 @@ plt.show()
 
 #### What each key argument does
 
-- `annot=True`
-  - Writes the actual numbers inside the heatmap cells.
+- `annot=True`: writes the actual count numbers inside each cell.
+- `fmt='d'`: formats the annotations as plain integers.
+- `cmap='Blues'`: uses a blue color scale (darker = higher count).
+- `xticklabels`, `yticklabels`: uses class names on both axes instead of numbers.
 
-- `fmt='d'`
-  - Displays integers.
-
-- `cmap='Blues'`
-  - Uses a blue color map.
-
-- `xticklabels`, `yticklabels`
-  - Uses class names on both axes.
-
-This plot is very useful for explaining specific error patterns.
+This plot is very useful for explaining specific error patterns to an instructor.
 
 ---
 
-### Seventh Code Cell: Sample Predictions
+### Sixth Code Cell: Sample Predictions
 
 ```python
 indices = np.random.choice(len(test_dataset), size=min(9, len(test_dataset)), replace=False)
@@ -1568,8 +1539,8 @@ axes = axes.ravel()
 #### What this does
 
 - Randomly selects up to 9 test images.
-- Creates a 3x3 plot grid.
-- Flattens the axes array so it is easy to index.
+- Creates a 3×3 grid of subplots.
+- `axes.ravel()` flattens the 2D grid of axes into a 1D list so we can index easily.
 
 ---
 
@@ -1578,11 +1549,11 @@ mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
 std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
 ```
 
-These tensors are used to reverse normalization for display.
+These tensors reverse the normalization applied during preprocessing.
 
-When images are normalized for the model, colors no longer look natural to humans.
+When images are normalized for the model, pixel values are no longer in the 0–1 range that matplotlib expects. So we must undo the normalization before displaying.
 
-So the notebook denormalizes them before plotting.
+`view(3, 1, 1)` reshapes the tensors so they broadcast correctly across the image dimensions.
 
 ---
 
@@ -1593,17 +1564,13 @@ img, true_label = test_dataset[sample_idx]
 display_img = (img * std + mean).clamp(0, 1).permute(1, 2, 0).numpy()
 ```
 
-#### What this does
+#### What this does step by step
 
-- `img` is already transformed.
-- `img * std + mean`
-  - Reverses normalization.
-- `clamp(0, 1)`
-  - Keeps pixel values valid.
-- `permute(1, 2, 0)`
-  - Converts tensor shape from channel-first to image format.
-- `.numpy()`
-  - Converts to NumPy for plotting.
+- `test_dataset[sample_idx]`: gets the transformed image tensor and its true label.
+- `img * std + mean`: reverses the normalization (undoes `Normalize`).
+- `.clamp(0, 1)`: ensures pixel values stay within the valid 0–1 range.
+- `.permute(1, 2, 0)`: changes tensor shape from `(C, H, W)` to `(H, W, C)` which matplotlib requires.
+- `.numpy()`: converts the tensor to a NumPy array.
 
 ---
 
@@ -1618,14 +1585,11 @@ with torch.no_grad():
 
 #### What this means
 
-- `unsqueeze(0)`
-  - Adds a batch dimension so the single image becomes a batch of size 1.
+- `img.unsqueeze(0)`: adds a batch dimension. The model expects input shape `(batch, C, H, W)` but a single image is `(C, H, W)`. `unsqueeze(0)` makes it `(1, C, H, W)`.
 
-- `softmax(...)`
-  - Converts raw output scores into probabilities.
+- `softmax(output, dim=1)`: converts raw class scores into probabilities that sum to 1.
 
-- `torch.max(...)`
-  - Finds the most probable class and its confidence.
+- `torch.max(probs, dim=1)`: returns both the highest probability value (confidence) and the index of that class (predicted label).
 
 ---
 
@@ -1635,8 +1599,8 @@ Then:
 color = 'green' if pred_label == true_label else 'red'
 ```
 
-- Green title means prediction is correct.
-- Red title means prediction is wrong.
+- Green title = correct prediction.
+- Red title = wrong prediction.
 
 ---
 
@@ -1655,11 +1619,11 @@ axes[plot_idx].set_title(
 
 This displays:
 
-- the image
-- true class
-- predicted class
-- confidence score
-- green or red correctness indicator
+- the de-normalized image
+- the true class name
+- the predicted class name
+- the confidence percentage
+- green or red to indicate correctness
 
 Then the plot is saved as `sample_predictions.png`.
 
@@ -1687,19 +1651,19 @@ This avoids confusion and keeps backward compatibility with your earlier project
 
 Notebook 1 checks the data.
 
-Without this, training could fail because of wrong paths, missing folders, or bad assumptions.
+Without this, training could fail because of wrong paths, missing folders, or bad assumptions about the data.
 
 ### Step 2: Training
 
 Notebook 2 learns from the train split and uses the validation split to decide when to stop.
 
-This creates the trained checkpoint.
+This creates the trained checkpoint at `models/best_model.pth`.
 
 ### Step 3: Evaluation
 
 Notebook 3 loads the saved model and measures final performance on the unseen test split.
 
-This produces the final academic metrics and visuals.
+This produces the final academic metrics and visualizations.
 
 ---
 
@@ -1709,13 +1673,15 @@ After studying these notebooks, you should be able to explain:
 
 - why the dataset must be checked before training
 - why images are resized to `224x224`
-- why augmentation is used only for training
-- what transfer learning means
+- why augmentation is used only for training, not validation or testing
+- what transfer learning means and why we froze the backbone
 - why ResNet18 was selected
 - what validation loss is used for
 - why early stopping helps avoid overfitting
-- how the best model is saved
+- what `torch.set_grad_enabled` does and why we disable gradients during validation
+- how the best model checkpoint is saved and what it contains
 - why test data must remain unseen during training
 - what accuracy, precision, recall, F1-score, and confusion matrix mean
+- why `classification_report(output_dict=True)` is used and what the dictionary contains
 
 If you can explain those clearly, you will already understand the codebase at a strong level.
